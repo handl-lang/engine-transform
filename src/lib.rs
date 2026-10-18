@@ -1,10 +1,10 @@
-//! # handl-plugin-engine-transform
+//! # hnl-engine-transform
 //!
 //! The **abstraction** crate for the AST transform operation (ADR-0094).
 //!
 //! Splits the generic transform engine into an abstraction (operation marker +
 //! request/output types + trait) and a future implementation crate
-//! (`plugin-engine-transform-rewrite`). This crate defines the [`Transform`]
+//! (`hnl-engine-transform-rewrite`). This crate defines the [`Transform`]
 //! operation marker, [`TransformRequest`], the [`TransformEngine`] trait,
 //! [`RuleSource`], and the [`NativeRewrite`] seam. **No traversal or rewrite
 //! code lives here** — the abstraction is the contract; the implementation

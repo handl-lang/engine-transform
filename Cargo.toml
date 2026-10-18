@@ -1,12 +1,23 @@
 [package]
-name = "handl-plugin-engine-transform"
-version.workspace = true
-edition.workspace = true
+name = "hnl-engine-transform"
+version = "0.1.0"
+edition = "2024"
 description = "The **abstraction** crate for the AST transform operation (ADR-0094)."
-license.workspace = true
-repository.workspace = true
+license = "MIT OR Apache-2.0"
+repository = "https://github.com/handl-lang/engine-transform"
 
 [dependencies]
-handl-language = { workspace = true }
-handl-plugin-ext-diag = { path = "../plugin-ext-diag" }
-serde_json = { workspace = true }
+handl-language = { git = "https://github.com/handl-lang/kernel", branch = "main" }
+handl-plugin-ext-diag = { git = "https://github.com/handl-lang/platform", branch = "main" }
+serde_json = "1"
+
+[patch."https://github.com/handl-lang/engine"]
+hnl-engine = { path = "../engine" }
+
+[patch."https://github.com/handl-lang/kernel"]
+handl-language = { path = "../kernel/crates/handl-language" }
+handl-value = { path = "../kernel/crates/handl-value" }
+
+[patch."https://github.com/handl-lang/platform"]
+handl-platform = { path = "../platform/crates/platform" }
+handl-plugin-ext-diag = { path = "../platform/crates/plugin-ext-diag" }
