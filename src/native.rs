@@ -274,6 +274,13 @@ impl<'a> RewriteCtx<'a> {
     /// Push the input node through unchanged, with its `children` array
     /// remapped into the output arena.
     ///
+    /// Named arena references (`ARENA_REF_PAYLOAD_KEYS` — a `function`
+    /// node's `body`) are remapped alongside `children`: they are old-arena
+    /// indices and go stale whenever the rewrite changed the output
+    /// layout — a stale ref can even form a cycle, which `Ast::subtree`
+    /// then never escapes. Unmapped targets are left untouched, matching
+    /// the `children` policy.
+    ///
     /// This is the "decline" path for natives that decide — after inspecting
     /// the node — not to rewrite it (mirroring the legacy `try_rust_desugar`
     /// `None` return, which fell through to pushing the remapped node). It
@@ -287,6 +294,15 @@ impl<'a> RewriteCtx<'a> {
                 if let Some(old_idx) = child.as_u64() {
                     if let Some(Some(new_idx)) = self.remap.get(old_idx as usize) {
                         *child = Value::from(*new_idx);
+                    }
+                }
+            }
+        }
+        for key in handl_language::ast::ARENA_REF_PAYLOAD_KEYS {
+            if let Some(old_idx) = payload.get(*key).and_then(|v| v.as_u64()) {
+                if let Some(Some(new_idx)) = self.remap.get(old_idx as usize) {
+                    if let Some(obj) = payload.as_object_mut() {
+                        obj.insert((*key).to_string(), Value::from(*new_idx));
                     }
                 }
             }
