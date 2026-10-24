@@ -420,6 +420,9 @@ const KNOWN_LSP_KINDS: &[&str] = &[
     "import_name",
     "export_name",
     "symbol",
+    "signature",
+    "folding_range",
+    "binding",
 ];
 
 /// Validate all LSP surface definitions in `lang`.
