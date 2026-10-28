@@ -66,19 +66,20 @@ pub fn validate_transforms(lang: &Language) -> Vec<Diagnostic> {
                     ));
                 }
 
-                if let Some(kinds) = pass_kinds.get(&def.pass) {
-                    if kinds.contains(target_kind) && target_kind != &def.node_kind {
-                        // Self-match is still a cycle but too noisy to warn twice.
-                        diags.push(Diagnostic::new(
-                            RULE,
-                            Severity::Warning,
-                            Span::default(),
-                            format!(
-                                "rule {} has target kind '{}' which matches another rule in pass '{}'; potential cycle under Fixpoint",
-                                def.id, target_kind, def.pass
-                            ),
-                        ));
-                    }
+                if let Some(kinds) = pass_kinds.get(&def.pass)
+                    && kinds.contains(target_kind)
+                    && target_kind != &def.node_kind
+                {
+                    // Self-match is still a cycle but too noisy to warn twice.
+                    diags.push(Diagnostic::new(
+                        RULE,
+                        Severity::Warning,
+                        Span::default(),
+                        format!(
+                            "rule {} has target kind '{}' which matches another rule in pass '{}'; potential cycle under Fixpoint",
+                            def.id, target_kind, def.pass
+                        ),
+                    ));
                 }
 
                 for step in children {
@@ -111,21 +112,21 @@ pub fn validate_transforms(lang: &Language) -> Vec<Diagnostic> {
                             def.id
                         ),
                     ));
-                } else if let Some(n) = shape_role_count(shape) {
-                    if path[0] >= n {
-                        diags.push(Diagnostic::new(
-                            RULE,
-                            Severity::Error,
-                            Span::default(),
-                            format!(
-                                "rule {} Replace first index {} is out of bounds for shape '{}' ({} declared roles)",
-                                def.id,
-                                path[0],
-                                shape.map(|s| s.node_kind.as_str()).unwrap_or("?"),
-                                n
-                            ),
-                        ));
-                    }
+                } else if let Some(n) = shape_role_count(shape)
+                    && path[0] >= n
+                {
+                    diags.push(Diagnostic::new(
+                        RULE,
+                        Severity::Error,
+                        Span::default(),
+                        format!(
+                            "rule {} Replace first index {} is out of bounds for shape '{}' ({} declared roles)",
+                            def.id,
+                            path[0],
+                            shape.map(|s| s.node_kind.as_str()).unwrap_or("?"),
+                            n
+                        ),
+                    ));
                 }
             }
         }
@@ -151,70 +152,69 @@ fn validate_step(
 ) {
     match step {
         RewriteStep::Keep(i) | RewriteStep::Splice(i) => {
-            if let Some(n) = shape_role_count(shape) {
-                if *i >= n {
-                    diags.push(Diagnostic::new(
-                        RULE,
-                        Severity::Error,
-                        Span::default(),
-                        format!(
-                            "rule {} step {:?} index {} is out of bounds for shape '{}' ({} declared roles)",
-                            rule_id, step, i, shape.map(|s| s.node_kind.as_str()).unwrap_or("?"), n
-                        ),
-                    ));
-                }
+            if let Some(n) = shape_role_count(shape)
+                && *i >= n
+            {
+                diags.push(Diagnostic::new(
+                    RULE,
+                    Severity::Error,
+                    Span::default(),
+                    format!(
+                        "rule {} step {:?} index {} is out of bounds for shape '{}' ({} declared roles)",
+                        rule_id, step, i, shape.map(|s| s.node_kind.as_str()).unwrap_or("?"), n
+                    ),
+                ));
             }
         }
         RewriteStep::KeepRole(role) => {
-            if let Some(s) = shape {
-                if s.role_index(role).is_none() {
-                    diags.push(Diagnostic::new(
-                        RULE,
-                        Severity::Error,
-                        Span::default(),
-                        format!(
-                            "rule {} uses unknown role '{}' for shape '{}'",
-                            rule_id, role, s.node_kind
-                        ),
-                    ));
-                }
+            if let Some(s) = shape
+                && s.role_index(role).is_none()
+            {
+                diags.push(Diagnostic::new(
+                    RULE,
+                    Severity::Error,
+                    Span::default(),
+                    format!(
+                        "rule {} uses unknown role '{}' for shape '{}'",
+                        rule_id, role, s.node_kind
+                    ),
+                ));
             }
         }
         RewriteStep::KeepPath(path) => {
-            if let Some(first) = path.first() {
-                if let Some(n) = shape_role_count(shape) {
-                    if *first >= n {
-                        diags.push(Diagnostic::new(
-                            RULE,
-                            Severity::Error,
-                            Span::default(),
-                            format!(
-                                "rule {} KeepPath first index {} is out of bounds for shape '{}' ({} declared roles)",
-                                rule_id, first, shape.map(|s| s.node_kind.as_str()).unwrap_or("?"), n
-                            ),
-                        ));
-                    }
-                }
+            if let Some(first) = path.first()
+                && let Some(n) = shape_role_count(shape)
+                && *first >= n
+            {
+                diags.push(Diagnostic::new(
+                    RULE,
+                    Severity::Error,
+                    Span::default(),
+                    format!(
+                        "rule {} KeepPath first index {} is out of bounds for shape '{}' ({} declared roles)",
+                        rule_id, first, shape.map(|s| s.node_kind.as_str()).unwrap_or("?"), n
+                    ),
+                ));
             }
             // Later path steps cannot be statically resolved to a child shape
             // here, so we validate only the first step.
         }
         RewriteStep::KeepRest(start) => {
-            if let Some(n) = shape_role_count(shape) {
-                if *start > n {
-                    diags.push(Diagnostic::new(
-                        RULE,
-                        Severity::Error,
-                        Span::default(),
-                        format!(
-                            "rule {} KeepRest({}) starts past shape '{}' arity ({} declared roles)",
-                            rule_id,
-                            start,
-                            shape.map(|s| s.node_kind.as_str()).unwrap_or("?"),
-                            n
-                        ),
-                    ));
-                }
+            if let Some(n) = shape_role_count(shape)
+                && *start > n
+            {
+                diags.push(Diagnostic::new(
+                    RULE,
+                    Severity::Error,
+                    Span::default(),
+                    format!(
+                        "rule {} KeepRest({}) starts past shape '{}' arity ({} declared roles)",
+                        rule_id,
+                        start,
+                        shape.map(|s| s.node_kind.as_str()).unwrap_or("?"),
+                        n
+                    ),
+                ));
             }
         }
         RewriteStep::Create {
@@ -255,20 +255,20 @@ fn validate_step(
                     ),
                 ));
             }
-            if let Some(n) = shape_role_count(shape) {
-                if *index >= n {
-                    diags.push(Diagnostic::new(
-                        RULE,
-                        Severity::Error,
-                        Span::default(),
-                        format!(
-                            "rule {} Apply index {} is out of bounds for shape '{}'",
-                            rule_id,
-                            index,
-                            shape.map(|s| s.node_kind.as_str()).unwrap_or("?")
-                        ),
-                    ));
-                }
+            if let Some(n) = shape_role_count(shape)
+                && *index >= n
+            {
+                diags.push(Diagnostic::new(
+                    RULE,
+                    Severity::Error,
+                    Span::default(),
+                    format!(
+                        "rule {} Apply index {} is out of bounds for shape '{}'",
+                        rule_id,
+                        index,
+                        shape.map(|s| s.node_kind.as_str()).unwrap_or("?")
+                    ),
+                ));
             }
         }
     }
@@ -287,54 +287,50 @@ fn validate_condition(
             role,
             kind: _,
         } => {
-            if let Some(i) = index {
-                if let Some(n) = shape_role_count(shape) {
-                    if *i >= n {
-                        diags.push(Diagnostic::new(
-                            RULE,
-                            Severity::Error,
-                            Span::default(),
-                            format!(
-                                "rule {} KindAt index {} is out of bounds for shape '{}'",
-                                rule_id,
-                                i,
-                                shape.map(|s| s.node_kind.as_str()).unwrap_or("?")
-                            ),
-                        ));
-                    }
-                }
+            if let Some(i) = index
+                && let Some(n) = shape_role_count(shape)
+                && *i >= n
+            {
+                diags.push(Diagnostic::new(
+                    RULE,
+                    Severity::Error,
+                    Span::default(),
+                    format!(
+                        "rule {} KindAt index {} is out of bounds for shape '{}'",
+                        rule_id,
+                        i,
+                        shape.map(|s| s.node_kind.as_str()).unwrap_or("?")
+                    ),
+                ));
             }
-            if let Some(r) = role {
-                if let Some(s) = shape {
-                    if s.role_index(r).is_none() {
-                        diags.push(Diagnostic::new(
-                            RULE,
-                            Severity::Error,
-                            Span::default(),
-                            format!(
-                                "rule {} KindAt uses unknown role '{}' for shape '{}'",
-                                rule_id, r, s.node_kind
-                            ),
-                        ));
-                    }
-                }
+            if let Some(r) = role
+                && let Some(s) = shape
+                && s.role_index(r).is_none()
+            {
+                diags.push(Diagnostic::new(
+                    RULE,
+                    Severity::Error,
+                    Span::default(),
+                    format!(
+                        "rule {} KindAt uses unknown role '{}' for shape '{}'",
+                        rule_id, r, s.node_kind
+                    ),
+                ));
             }
-            if let (Some(i), Some(r)) = (index, role) {
-                if let Some(s) = shape {
-                    if let Some(ri) = s.role_index(r) {
-                        if ri != *i {
-                            diags.push(Diagnostic::new(
-                                RULE,
-                                Severity::Error,
-                                Span::default(),
-                                format!(
-                                    "rule {} KindAt index {} does not match role '{}' (resolves to index {})",
-                                    rule_id, i, r, ri
-                                ),
-                            ));
-                        }
-                    }
-                }
+            if let (Some(i), Some(r)) = (index, role)
+                && let Some(s) = shape
+                && let Some(ri) = s.role_index(r)
+                && ri != *i
+            {
+                diags.push(Diagnostic::new(
+                    RULE,
+                    Severity::Error,
+                    Span::default(),
+                    format!(
+                        "rule {} KindAt index {} does not match role '{}' (resolves to index {})",
+                        rule_id, i, r, ri
+                    ),
+                ));
             }
         }
         TransformCondition::AnyChildKind { kind: _ } => {
@@ -350,51 +346,50 @@ fn validate_condition(
             path: _,
             value: _,
         } => {
-            if let (Some(i), Some(s)) = (index, shape) {
-                if let Some(n) = shape_role_count(Some(s)) {
-                    if *i >= n {
-                        diags.push(Diagnostic::new(
-                            RULE,
-                            Severity::Error,
-                            Span::default(),
-                            format!(
-                                "rule {} ChildPayloadEq index {} is out of bounds for shape '{}'",
-                                rule_id, i, s.node_kind
-                            ),
-                        ));
-                    }
-                }
+            if let (Some(i), Some(s)) = (index, shape)
+                && let Some(n) = shape_role_count(Some(s))
+                && *i >= n
+            {
+                diags.push(Diagnostic::new(
+                    RULE,
+                    Severity::Error,
+                    Span::default(),
+                    format!(
+                        "rule {} ChildPayloadEq index {} is out of bounds for shape '{}'",
+                        rule_id, i, s.node_kind
+                    ),
+                ));
             }
-            if let (Some(r), Some(s)) = (role, shape) {
-                if s.role_index(r).is_none() {
-                    diags.push(Diagnostic::new(
-                        RULE,
-                        Severity::Error,
-                        Span::default(),
-                        format!(
-                            "rule {} ChildPayloadEq uses unknown role '{}' for shape '{}'",
-                            rule_id, r, s.node_kind
-                        ),
-                    ));
-                }
+            if let (Some(r), Some(s)) = (role, shape)
+                && s.role_index(r).is_none()
+            {
+                diags.push(Diagnostic::new(
+                    RULE,
+                    Severity::Error,
+                    Span::default(),
+                    format!(
+                        "rule {} ChildPayloadEq uses unknown role '{}' for shape '{}'",
+                        rule_id, r, s.node_kind
+                    ),
+                ));
             }
         }
         TransformCondition::ChildCount(n) => {
-            if let Some(s) = shape {
-                if let Some(roles) = &s.children {
-                    let variadic = roles.iter().any(|r| r.variadic);
-                    let required = roles.len();
-                    if !variadic && *n < required {
-                        diags.push(Diagnostic::new(
-                            RULE,
-                            Severity::Warning,
-                            Span::default(),
-                            format!(
-                                "rule {} ChildCount({}) is below shape '{}' required role count ({})",
-                                rule_id, n, s.node_kind, required
-                            ),
-                        ));
-                    }
+            if let Some(s) = shape
+                && let Some(roles) = &s.children
+            {
+                let variadic = roles.iter().any(|r| r.variadic);
+                let required = roles.len();
+                if !variadic && *n < required {
+                    diags.push(Diagnostic::new(
+                        RULE,
+                        Severity::Warning,
+                        Span::default(),
+                        format!(
+                            "rule {} ChildCount({}) is below shape '{}' required role count ({})",
+                            rule_id, n, s.node_kind, required
+                        ),
+                    ));
                 }
             }
         }
@@ -561,40 +556,36 @@ fn validate_lsp_rule_config(
         validate_lsp_trivia_list(docs, rule_id, def_id, lang, "trailing_trivia", diags);
     }
 
-    if let Some(name_cfg) = rule.config.get("name").and_then(Value::as_object) {
-        if let Some(role) = name_cfg.get("role").and_then(Value::as_str) {
-            if let Some(s) = shape {
-                if s.role_index(role).is_none() {
-                    diags.push(Diagnostic::new(
-                        RULE,
-                        Severity::Error,
-                        Span::default(),
-                        format!(
-                            "rule '{}' in fragment '{}' uses unknown role '{}' for shape '{}'",
-                            rule_id, def_id, role, s.node_kind
-                        ),
-                    ));
-                }
-            }
-        }
+    if let Some(name_cfg) = rule.config.get("name").and_then(Value::as_object)
+        && let Some(role) = name_cfg.get("role").and_then(Value::as_str)
+        && let Some(s) = shape
+        && s.role_index(role).is_none()
+    {
+        diags.push(Diagnostic::new(
+            RULE,
+            Severity::Error,
+            Span::default(),
+            format!(
+                "rule '{}' in fragment '{}' uses unknown role '{}' for shape '{}'",
+                rule_id, def_id, role, s.node_kind
+            ),
+        ));
     }
 
-    if let Some(sig_cfg) = rule.config.get("signature").and_then(Value::as_object) {
-        if let Some(role) = sig_cfg.get("role").and_then(Value::as_str) {
-            if let Some(s) = shape {
-                if s.role_index(role).is_none() {
-                    diags.push(Diagnostic::new(
-                        RULE,
-                        Severity::Error,
-                        Span::default(),
-                        format!(
-                            "rule '{}' in fragment '{}' uses unknown role '{}' for shape '{}'",
-                            rule_id, def_id, role, s.node_kind
-                        ),
-                    ));
-                }
-            }
-        }
+    if let Some(sig_cfg) = rule.config.get("signature").and_then(Value::as_object)
+        && let Some(role) = sig_cfg.get("role").and_then(Value::as_str)
+        && let Some(s) = shape
+        && s.role_index(role).is_none()
+    {
+        diags.push(Diagnostic::new(
+            RULE,
+            Severity::Error,
+            Span::default(),
+            format!(
+                "rule '{}' in fragment '{}' uses unknown role '{}' for shape '{}'",
+                rule_id, def_id, role, s.node_kind
+            ),
+        ));
     }
 
     if let Some(sk) = rule.config.get("symbol_kind") {

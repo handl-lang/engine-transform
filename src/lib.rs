@@ -6,9 +6,11 @@
 //! request/output types + trait) and a future implementation crate
 //! (`hnl-engine-transform-rewrite`). This crate defines the [`Transform`]
 //! operation marker, [`TransformRequest`], the [`TransformEngine`] trait,
-//! [`RuleSource`], and the [`NativeRewrite`] seam. **No traversal or rewrite
-//! code lives here** — the abstraction is the contract; the implementation
-//! crate will interpret [`TransformRule`] data against a [`Language`].
+//! [`RuleSource`](crate::source::RuleSource), and the [`NativeRewrite`] seam.
+//! **No traversal or rewrite code lives here** — the abstraction is the
+//! contract; the implementation crate will interpret
+//! [`TransformRule`](handl_language::TransformRule) data against a
+//! [`Language`].
 //!
 //! Engines consume [`handl_language::Language`] data — they look up
 //! `lang.transforms` and `lang.ast` to dispatch rules, never match on a static
@@ -57,8 +59,8 @@ pub struct Match {
 /// The trait a transform engine implements.
 ///
 /// An engine looks up `lang.transforms` and rewrites `req.ast` according to the
-/// requested [`TransformMode`]. It is pure data-driven: it does not match on a
-/// static `CanonicalKind` enum.
+/// requested [`TransformMode`](crate::request::TransformMode). It is pure
+/// data-driven: it does not match on a static `CanonicalKind` enum.
 pub trait TransformEngine {
     /// Apply the transform described by `req` to `req.ast`.
     ///
@@ -118,7 +120,7 @@ mod tests {
         let t1 = Transform;
         let t2 = Transform;
         assert_eq!(t1, t2);
-        assert_eq!(t1, Transform::default());
+        assert_eq!(t1, <Transform as Default>::default());
     }
 
     #[test]
@@ -173,7 +175,6 @@ mod tests {
 
         let got = registry.rewrite("one", &mut ctx).unwrap();
         assert!(registry.rewrite("missing", &mut ctx).is_err());
-        drop(ctx);
 
         assert_eq!(output.at(got).unwrap().kind, "lit");
     }

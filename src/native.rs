@@ -93,8 +93,7 @@ impl NativeRewrite for ChainedRewrite {
 ///
 /// First install wins (`OnceLock`), matching `install_default_language` /
 /// `install_loader` in `plugin-lib-handl`.
-static TRANSFORM_OVERLAY: std::sync::OnceLock<Arc<dyn NativeRewrite>> =
-    std::sync::OnceLock::new();
+static TRANSFORM_OVERLAY: std::sync::OnceLock<Arc<dyn NativeRewrite>> = std::sync::OnceLock::new();
 
 /// Install the process-wide transform overlay. The first installation
 /// wins; later calls return the rejected overlay.
@@ -291,20 +290,19 @@ impl<'a> RewriteCtx<'a> {
         let mut payload = self.node.payload.clone();
         if let Some(children) = payload.get_mut("children").and_then(|c| c.as_array_mut()) {
             for child in children.iter_mut() {
-                if let Some(old_idx) = child.as_u64() {
-                    if let Some(Some(new_idx)) = self.remap.get(old_idx as usize) {
-                        *child = Value::from(*new_idx);
-                    }
+                if let Some(old_idx) = child.as_u64()
+                    && let Some(Some(new_idx)) = self.remap.get(old_idx as usize)
+                {
+                    *child = Value::from(*new_idx);
                 }
             }
         }
         for key in handl_language::ast::ARENA_REF_PAYLOAD_KEYS {
-            if let Some(old_idx) = payload.get(*key).and_then(|v| v.as_u64()) {
-                if let Some(Some(new_idx)) = self.remap.get(old_idx as usize) {
-                    if let Some(obj) = payload.as_object_mut() {
-                        obj.insert((*key).to_string(), Value::from(*new_idx));
-                    }
-                }
+            if let Some(old_idx) = payload.get(*key).and_then(|v| v.as_u64())
+                && let Some(Some(new_idx)) = self.remap.get(old_idx as usize)
+                && let Some(obj) = payload.as_object_mut()
+            {
+                obj.insert((*key).to_string(), Value::from(*new_idx));
             }
         }
         self.out.push(AstNode {
@@ -318,7 +316,7 @@ impl<'a> RewriteCtx<'a> {
     pub fn child_is_kind(&self, i: usize, kind: &str) -> bool {
         self.child_ref(i)
             .and_then(|idx| self.ast.get(AstRef::new(idx)))
-            .map_or(false, |child| child.kind == kind)
+            .is_some_and(|child| child.kind == kind)
     }
 
     /// The original input arena index of child `i`.
@@ -335,17 +333,21 @@ impl<'a> RewriteCtx<'a> {
     }
 }
 
+/// A registered native-rewrite function: `name -> closure` in a
+/// [`NativeRewriteRegistry`].
+type NativeFn = Box<dyn Fn(&mut RewriteCtx<'_>) -> Result<AstRef, LangError> + Send + Sync>;
+
 /// A native-rewrite registry backed by a `HashMap` of named functions.
 ///
 /// The stored closures are `Send + Sync` so the registry can be shared across
 /// threads by the parallel engine.
 pub struct NativeRewriteRegistry {
-    fns: HashMap<
-        String,
-        Box<dyn Fn(&mut RewriteCtx<'_>) -> Result<AstRef, LangError> + Send + Sync>,
-    >,
+    fns: HashMap<String, NativeFn>,
 }
 
+// Not `Default`: a public `Default` impl would add API surface, and `new()` is
+// the documented constructor.
+#[allow(clippy::new_without_default)]
 impl NativeRewriteRegistry {
     /// Create an empty registry.
     pub fn new() -> Self {
@@ -355,11 +357,7 @@ impl NativeRewriteRegistry {
     }
 
     /// Register a native rewrite under `name`.
-    pub fn register(
-        &mut self,
-        name: impl Into<String>,
-        f: Box<dyn Fn(&mut RewriteCtx<'_>) -> Result<AstRef, LangError> + Send + Sync>,
-    ) {
+    pub fn register(&mut self, name: impl Into<String>, f: NativeFn) {
         self.fns.insert(name.into(), f);
     }
 
