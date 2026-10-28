@@ -18,6 +18,7 @@
 
 #![warn(missing_docs)]
 
+pub mod condition;
 pub mod native;
 pub mod output;
 pub mod request;
