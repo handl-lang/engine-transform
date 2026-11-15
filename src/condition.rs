@@ -65,6 +65,24 @@ pub fn matches_condition(
             .and_then(|c| c.as_array())
             .map(|arr| arr.len() == *n)
             .unwrap_or(*n == 0),
+        TransformCondition::AttrEq { path, attr, value } => attr_at(ast, node, path, attr)
+            .map(|v| match value {
+                Some(want) => &v == want,
+                None => true,
+            })
+            .unwrap_or(false),
+        TransformCondition::SameAttr {
+            path_a,
+            attr_a,
+            path_b,
+            attr_b,
+        } => match (
+            attr_at(ast, node, path_a, attr_a),
+            attr_at(ast, node, path_b, attr_b),
+        ) {
+            (Some(a), Some(b)) => a == b,
+            _ => false,
+        },
         TransformCondition::And(conds) => {
             conds.iter().all(|c| matches_condition(lang, ast, node, c))
         }
@@ -132,6 +150,36 @@ fn payload_eq(
         .and_then(|name| lang.globals.get(name))
         .map(|global| global == value)
         .unwrap_or(false)
+}
+
+/// Resolve the attr `attr` on the node reached by child-index `path`
+/// below `node` — the [`TransformCondition::AttrEq`] /
+/// [`TransformCondition::SameAttr`] lookup. An empty `path` names
+/// `node` itself. Returns the attr's payload value, or `None` when the
+/// path does not resolve, the node has no `attrs` map, or the attr is
+/// absent.
+fn attr_at<'a>(
+    ast: &'a Ast,
+    node: &'a AstNode,
+    path: &[usize],
+    attr: &str,
+) -> Option<serde_json::Value> {
+    let mut current = node;
+    for &step in path {
+        let idx = current
+            .payload
+            .get("children")
+            .and_then(|c| c.as_array())
+            .and_then(|arr| arr.get(step))
+            .and_then(|v| v.as_u64())
+            .map(|v| v as usize)?;
+        current = ast.get(AstRef::new(idx))?;
+    }
+    current
+        .payload
+        .get("attrs")
+        .and_then(|a| a.get(attr))
+        .cloned()
 }
 
 /// Navigate a dotted `path` (`.`-separated object keys; numeric segments

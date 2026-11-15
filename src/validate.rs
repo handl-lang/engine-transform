@@ -374,6 +374,11 @@ fn validate_condition(
                 ));
             }
         }
+        TransformCondition::AttrEq { .. } | TransformCondition::SameAttr { .. } => {
+            // Attr paths are child-index navigations evaluated against
+            // the input arena — like `PayloadEq`'s payload paths they are
+            // engine-defined data, not statically checkable roles.
+        }
         TransformCondition::ChildCount(n) => {
             if let Some(s) = shape
                 && let Some(roles) = &s.children
