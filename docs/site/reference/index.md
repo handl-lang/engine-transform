@@ -14,7 +14,7 @@
 
 | crate | role |
 |---|---|
-| `hnl-engine-transform` | abstraction — contract only |
+| `hnl-tool-transform` | abstraction — contract only |
 
 ## Build and test
 

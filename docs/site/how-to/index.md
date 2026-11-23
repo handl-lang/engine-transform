@@ -5,7 +5,7 @@ repos it patches.
 
 ## Write a transform pass
 
-Implement `TransformEngine`, or reuse `engine-transform-rewrite`'s rule loop; return `declined` when nothing matched so the caller can skip re-running.
+Implement `TransformEngine`, or reuse `tool-transform-rewrite`'s rule loop; return `declined` when nothing matched so the caller can skip re-running.
 
 ## Replace the AST safely
 

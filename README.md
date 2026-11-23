@@ -1,10 +1,10 @@
-# engine-transform
+# tool-transform
 
-`hnl-engine-transform` — the abstraction crate for the AST transform operation.
+`hnl-tool-transform` — the abstraction crate for the AST transform operation.
 
 An `engine-*` crate: the trait/type surface for AST transforms (passes,
 pipelines, plans) that concrete transform engines
-(`engine-transform-rewrite`) implement.
+(`tool-transform-rewrite`) implement.
 
 ## Development
 
@@ -22,4 +22,4 @@ MIT.
 
 ## Documentation
 
-<https://handl-lang.github.io/docs/engine-transform/>
+<https://handl-lang.github.io/docs/tool-transform/>
