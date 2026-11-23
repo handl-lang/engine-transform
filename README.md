@@ -2,7 +2,7 @@
 
 `hnl-tool-transform` — the abstraction crate for the AST transform operation.
 
-An `engine-*` crate: the trait/type surface for AST transforms (passes,
+A `tool-*` crate: the trait/type surface for AST transforms (passes,
 pipelines, plans) that concrete transform engines
 (`tool-transform-rewrite`) implement.
 
