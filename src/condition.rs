@@ -120,15 +120,28 @@ fn resolve_child_index(
 
 /// Payload equality for the `*PayloadEq` conditions.
 ///
-/// Direct JSON equality, plus one data-driven extension: when the tested
-/// node is a *name leaf* (its [`AstShapeDef`] declares `pattern_role:
-/// "leaf"` — e.g. canonical `var`) and the payload under test is a string
-/// naming an ambient global in [`Language::globals`], the name compares
-/// equal to the global's bound value. Constants spelled as references —
-/// the imported Bool globals `true`/`false`, which lex as `var` nodes
-/// rather than `value` literals — therefore satisfy `value: true` /
-/// `value: false` guards without the condition vocabulary hardcoding
-/// global spellings.
+/// Direct JSON equality, plus two documented extensions:
+///
+/// 1. **String-pattern operators.** When `value` is a *single-key*
+///    object `{"$prefix"|"$suffix"|"$contains": "<lit>"}` and the
+///    payload under test is a string, the string is compared by the
+///    named affix/substring relation instead of JSON equality — the
+///    `match:` escape hatch for name patterns (e.g. every
+///    `deprecated_*` callee). This is deliberately *not* a regex
+///    engine: no new dependency, no ReDoS surface, and the spelling
+///    says what it does. A multi-key object, an unknown `$`-key, or a
+///    non-string operand falls through to ordinary equality. Literal
+///    equality is checked first, so a payload that genuinely holds a
+///    `{"$prefix": …}`-shaped record still compares by value.
+/// 2. **Name-leaf globals.** When the tested node is a *name leaf*
+///    (its [`AstShapeDef`] declares `pattern_role: "leaf"` — e.g.
+///    canonical `var`) and the payload under test is a string naming
+///    an ambient global in [`Language::globals`], the name compares
+///    equal to the global's bound value. Constants spelled as
+///    references — the imported Bool globals `true`/`false`, which lex
+///    as `var` nodes rather than `value` literals — therefore satisfy
+///    `value: true` / `value: false` guards without the condition
+///    vocabulary hardcoding global spellings.
 fn payload_eq(
     lang: &Language,
     node: &AstNode,
@@ -137,6 +150,16 @@ fn payload_eq(
 ) -> bool {
     if v == value {
         return true;
+    }
+    if let Some(s) = v.as_str()
+        && let Some(op) = string_pattern_op(value)
+    {
+        return match op {
+            ("$prefix", pat) => s.starts_with(pat),
+            ("$suffix", pat) => s.ends_with(pat),
+            ("$contains", pat) => s.contains(pat),
+            _ => unreachable!("string_pattern_op only yields known keys"),
+        };
     }
     let is_name_leaf = lang
         .ast
@@ -150,6 +173,25 @@ fn payload_eq(
         .and_then(|name| lang.globals.get(name))
         .map(|global| global == value)
         .unwrap_or(false)
+}
+
+/// Decode a `*PayloadEq` `value` operand as a string-pattern operator:
+/// a single-key object `{"$prefix"|"$suffix"|"$contains": "<lit>"}`.
+/// Returns `(operator, pattern)`; `None` for anything else (literal
+/// values, multi-key objects, unknown `$`-keys, non-string patterns).
+fn string_pattern_op(value: &serde_json::Value) -> Option<(&'static str, &str)> {
+    let obj = value.as_object()?;
+    if obj.len() != 1 {
+        return None;
+    }
+    let (key, pat) = obj.iter().next()?;
+    let op = match key.as_str() {
+        "$prefix" => "$prefix",
+        "$suffix" => "$suffix",
+        "$contains" => "$contains",
+        _ => return None,
+    };
+    Some((op, pat.as_str()?))
 }
 
 /// Resolve the attr `attr` on the node reached by child-index `path`
@@ -197,4 +239,60 @@ fn payload_at<'a>(payload: &'a serde_json::Value, path: &str) -> Option<&'a serd
         };
     }
     Some(cur)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use handl_language::{Ast, AstNode, TransformCondition};
+    use serde_json::json;
+
+    fn node_with(payload: serde_json::Value) -> AstNode {
+        let mut node = AstNode::new("call");
+        node.payload = payload;
+        node
+    }
+
+    fn payload_eq_fires(node: &AstNode, value: serde_json::Value) -> bool {
+        matches_condition(
+            &Language::new(),
+            &Ast::new(),
+            node,
+            &TransformCondition::PayloadEq {
+                path: "name".into(),
+                value,
+            },
+        )
+    }
+
+    #[test]
+    fn string_pattern_operators_match() {
+        let node = node_with(json!({"name": "deprecated_foo"}));
+        assert!(payload_eq_fires(&node, json!({"$prefix": "deprecated_"})));
+        assert!(payload_eq_fires(&node, json!({"$suffix": "_foo"})));
+        assert!(payload_eq_fires(&node, json!({"$contains": "cated_fo"})));
+        assert!(!payload_eq_fires(&node, json!({"$prefix": "legacy_"})));
+        assert!(!payload_eq_fires(&node, json!({"$suffix": "_bar"})));
+        assert!(!payload_eq_fires(&node, json!({"$contains": "zzz"})));
+    }
+
+    #[test]
+    fn pattern_ops_fall_back_to_literal_equality() {
+        // Multi-key objects, unknown `$` keys, and non-string patterns
+        // are ordinary JSON values, not operators.
+        let node = node_with(json!({"name": "x"}));
+        assert!(!payload_eq_fires(
+            &node,
+            json!({"$prefix": "x", "$suffix": "x"})
+        ));
+        assert!(!payload_eq_fires(&node, json!({"$regex": "x.*"})));
+        assert!(!payload_eq_fires(&node, json!({"$prefix": 3})));
+        // A payload that literally holds the operator-shaped record
+        // still compares by value (literal equality runs first).
+        let record = node_with(json!({"name": {"$prefix": "x"}}));
+        assert!(payload_eq_fires(&record, json!({"$prefix": "x"})));
+        // Non-string payloads never take the operator path.
+        let num = node_with(json!({"name": 7}));
+        assert!(!payload_eq_fires(&num, json!({"$prefix": "7"})));
+    }
 }
